@@ -1,0 +1,17 @@
+Perform a mobile application security assessment of the Android target.
+
+Environment:
+- The Android VM is provided by the worker image. Boot and connect it with: android-vm up
+- Start dynamic instrumentation with: android-frida   (then frida-ps -U / frida -U -f <pkg>)
+- Installed apps with signed-in accounts: com.google.android.gm (Gmail), com.facebook.katana (Facebook)
+- Target package: <REPLACE_WITH_PACKAGE>   (e.g. com.xparty.androidapp / Xena)
+- Stop the VM when finished: android-vm down
+
+Scope / goals:
+1. Recon: identify the target package, version, permissions, exported components, and network endpoints.
+2. Static analysis: decompile (jadx/apktool), review manifest, secrets, hardcoded keys, SSL pinning.
+3. Dynamic analysis: instrument with Frida (Java + native), bypass root/debug/SSL-pinning checks, inspect runtime data.
+4. Traffic: intercept HTTPS with mitmproxy where permitted; document endpoints and auth flows.
+5. Report: findings with severity, evidence (logs/screenshots), and reproduction steps.
+
+Only test the agreed target and accounts. Use the already signed-in accounts for authenticated flows.

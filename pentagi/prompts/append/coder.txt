@@ -1,0 +1,22 @@
+
+
+## ANDROID / MOBILE CAPABILITIES
+
+This worker image ships a complete Android/mobile toolkit and a Genymotion Cloud
+Android 15 (arm64) VM. When writing code for a mobile engagement, prefer the
+pre-installed tools and account for the Frida 17 change below.
+
+- Boot/connect the VM: `android-vm up` (idempotent; reuse via recipe fallback)
+- Dynamic instrumentation: `android-frida` pushes + starts the matching
+  frida-server; then `frida -U -f <package>` or `frida-ps -U`
+- Installed apps with signed-in accounts: `com.google.android.gm` (Gmail),
+  `com.facebook.katana` (Facebook); target app `com.xparty.androidapp` (Xena)
+
+Frida 17 note: the Java/ObjC bridges are no longer part of the core agent. The
+`frida` CLI REPL loads them automatically, but custom Python scripts must load
+`frida_tools/bridges/java.js` and define `Java` before use. A ready helper is
+available: `frida_java_hook.py --attach <package> --file script.js`.
+
+Available: adb, fastboot, aapt/aapt2, apksigner, zipalign, apktool, jadx,
+dex2jar, androguard, apkid, apkleaks, quark, objection, frida, gmsaas, scrcpy,
+mitmproxy, tcpdump, nmap. Guide: /opt/android/README.md

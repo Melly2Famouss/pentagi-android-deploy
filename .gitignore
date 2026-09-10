@@ -1,0 +1,17 @@
+# secrets / local state
+android-image/gm_token
+*.env
+!*.env.example
+*.tar
+*.tar.gz
+*.tgz
+*.key
+*.pem
+newtoken.txt
+gh_cookies.txt
+gh_session.json
+
+# misc
+.DS_Store
+__pycache__/
+*.pyc

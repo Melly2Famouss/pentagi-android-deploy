@@ -1,0 +1,11 @@
+
+
+## ENVIRONMENT NOTE - ANDROID / MOBILE
+
+The worker image includes a full Android/mobile toolkit and a bootable Genymotion
+Android 15 (arm64) VM (`android-vm up`, see /opt/android/README.md). Apps already
+installed include Gmail and Facebook with signed-in accounts, plus the target app
+`com.xparty.androidapp` (Xena). Frida 17 requires loading the Java bridge for
+custom scripts (the `frida` CLI does it automatically; use `frida_java_hook.py`
+for Python). When a request is about a mobile/Android target, plan subtasks that
+use these capabilities instead of assuming only a generic Linux container.

@@ -1,0 +1,13 @@
+
+
+## ANDROID TOOLING ALREADY PRESENT
+
+This worker image already ships a complete Android/mobile toolkit: adb, fastboot,
+aapt/aapt2, apksigner, zipalign, apktool, jadx, dex2jar, androguard, apkid,
+apkleaks, quark, objection, frida (+ server binaries for all ABIs), gmsaas,
+scrcpy, mitmproxy, tcpdump and nmap.
+
+Before installing anything, check `command -v <tool>`. Do not reinstall tools
+that are already present. A Genymotion Android 15 (arm64) VM can be booted and
+connected with `android-vm up` (see /opt/android/README.md). Use
+`android-vm down` to stop it when finished.

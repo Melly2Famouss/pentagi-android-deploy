@@ -1,0 +1,59 @@
+ANDROID MOBILE PENTEST METHODOLOGY - Genymotion Cloud VM + Frida
+
+ENVIRONMENT
+- A Genymotion Cloud Android 15 (API 35, arm64-v8a) VM is available in this worker image.
+- Boot and connect it (idempotent; reuses an ONLINE instance booted from the recipe):
+    android-vm up
+- Control commands:
+    android-vm status        # adb devices + gmsaas instances
+    android-vm apps          # installed 3rd-party apps
+    android-vm adb <args>    # run any adb command
+    android-vm shell <args>  # run a device shell command
+    android-vm down          # stop the VM when finished
+- The device is rooted with `adb root`.
+- Apps already installed with signed-in accounts: com.google.android.gm (Gmail),
+  com.facebook.katana (Facebook). Example target app: com.xparty.androidapp (Xena).
+- Toolkit: adb, fastboot, aapt/aapt2, apksigner, zipalign, apktool, jadx, dex2jar,
+  androguard, apkid, apkleaks, quark, objection, frida (+ server binaries for all
+  ABIs), gmsaas, scrcpy, mitmproxy, tcpdump, nmap.
+
+1. RECON
+- adb shell pm list packages -3
+- adb shell dumpsys package <pkg>   (activities, services, receivers, providers,
+  permissions, intent filters)
+- Pull the APK: adb shell pm path <pkg> ; adb pull <path>
+- Identify packer / anti-debug / anti-root: apkid <apk>
+- List exported components and deep links; test for task hijacking / intent redirection.
+
+2. STATIC ANALYSIS
+- jadx -d out <apk> or jadx-gui <apk>        (Java decompilation)
+- apktool d <apk> -o src                    (resources + smali)
+- androguard, quark-engine for automated analysis
+- Look for hardcoded secrets/API keys, endpoints, weak crypto, insecure storage,
+  exported components, WebView JS bridges, backup flags.
+
+3. DYNAMIC ANALYSIS WITH FRIDA
+- Start frida-server on the device: android-frida
+- List processes: frida-ps -U
+- Spawn: frida -U -f <pkg> ; Attach: frida -U -n <name> or -p <pid>
+- Frida 17 note: the Java/ObjC bridges are no longer part of the core agent. The
+  `frida` CLI REPL loads them automatically, but custom Python scripts must load
+  frida_tools/bridges/java.js and define `Java`. Use the bundled helper:
+      frida_java_hook.py --attach <pkg> --file hook.js
+- Typical hooks: Java.perform; hook method implementations; enumerate loaded
+  classes; dump/modify return values; bypass root/debugger checks; bypass SSL
+  pinning (TrustManager, OkHttp CertificatePinner, Conscrypt); intercept crypto.
+- Native: Frida native API, hook libc / JNI, trace native modules.
+
+4. TRAFFIC INTERCEPTION
+- mitmproxy on the host/container; configure the device HTTP proxy and install the
+  CA. On the rooted device push the CA to the system trust store, or use objection.
+- objection -g <pkg> explore, then: android sslpinning disable ; android root disable
+
+5. AUTHENTICATED / SIGN-UP FLOWS
+- Use the signed-in Gmail and Facebook accounts on the device to complete login,
+  OAuth and sign-up flows when the engagement requires an authenticated session.
+- Automate UI with: adb shell input tap/text/swipe and adb shell uiautomator dump.
+
+6. CLEANUP
+- Always stop the VM when finished: android-vm down

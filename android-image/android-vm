@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# android-vm - boot / connect / control the shared Genymotion Android VM.
+#
+#   android-vm up       boot (or reuse) the VM and establish the ADB tunnel
+#   android-vm down     stop the VM
+#   android-vm status   show adb devices and gmsaas instances
+#   android-vm serial   print the adb serial
+#   android-vm apps     list installed 3rd-party apps
+#   android-vm adb ..   run an adb command
+#   android-vm shell .. run a command in the device shell
+#
+# Config via env: ANDROID_RECIPE_UUID, ANDROID_INSTANCE_NAME, ANDROID_TOKEN_FILE
+set -euo pipefail
+
+TOKEN_FILE="${ANDROID_TOKEN_FILE:-/etc/android/gm_token}"
+if [ -z "${GENYMOTION_API_TOKEN:-}" ] && [ -r "$TOKEN_FILE" ]; then
+  export GENYMOTION_API_TOKEN="$(cat "$TOKEN_FILE")"
+fi
+RECIPE="${ANDROID_RECIPE_UUID:-33f56572-f006-4f79-8d53-26d8887288f9}"
+NAME="${ANDROID_INSTANCE_NAME:-pentagi-android}"
+
+find_instance() {
+  gmsaas --format json instances list 2>/dev/null | NAME="$NAME" RECIPE="$RECIPE" python3 -c '
+import sys, json, os
+name = os.environ["NAME"]; recipe = os.environ["RECIPE"]
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+online = [i for i in d.get("instances", []) if i.get("state") == "ONLINE"]
+for i in online:
+    if i.get("name") == name:
+        print(i["uuid"]); sys.exit(0)
+for i in online:
+    if (i.get("recipe") or {}).get("uuid") == recipe:
+        print(i["uuid"]); sys.exit(0)
+'
+}
+
+cmd="${1:-up}"; shift || true
+case "$cmd" in
+  up)
+    UUID="$(find_instance || true)"
+    if [ -z "${UUID:-}" ]; then
+      echo "[*] Booting Android VM from recipe $RECIPE ..."
+      gmsaas instances start "$RECIPE" "$NAME" >/dev/null
+      UUID="$(find_instance)"
+    else
+      echo "[*] Reusing ONLINE instance $UUID"
+    fi
+    echo "[*] Establishing ADB tunnel ..."
+    gmsaas instances adbconnect "$UUID" >/dev/null
+    adb wait-for-device
+    adb root >/dev/null 2>&1 || true
+    sleep 3
+    adb wait-for-device
+    echo "[+] Android VM ready: $(adb devices | awk 'NR==2{print $1" "$2}')"
+    echo "[+] Android $(adb shell getprop ro.build.version.release | tr -d '\r') (API $(adb shell getprop ro.build.version.sdk | tr -d '\r'), $(adb shell getprop ro.product.cpu.abi | tr -d '\r'))"
+    ;;
+  down)
+    UUID="$(find_instance || true)"
+    if [ -n "${UUID:-}" ]; then
+      gmsaas instances stop "$UUID" >/dev/null
+      echo "[+] Stopped instance $UUID"
+    else
+      echo "[*] No ONLINE instance named $NAME"
+    fi
+    ;;
+  status)
+    adb devices -l || true
+    gmsaas instances list || true
+    ;;
+  serial)
+    adb devices | awk 'NR==2{print $1}'
+    ;;
+  apps)
+    adb shell pm list packages -3
+    ;;
+  adb)
+    exec adb "$@"
+    ;;
+  shell)
+    exec adb shell "$@"
+    ;;
+  *)
+    echo "usage: android-vm {up|down|status|serial|apps|adb <args>|shell <args>}"; exit 1;;
+esac

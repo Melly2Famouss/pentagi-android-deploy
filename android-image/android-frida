@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# android-frida - push and start the matching frida-server on the Android VM.
+#   android-frida          push+start frida-server, then list processes
+#   android-frida stop     stop frida-server
+set -euo pipefail
+
+adb wait-for-device
+adb root >/dev/null 2>&1 || true
+sleep 2
+adb wait-for-device
+
+if [ "${1:-start}" = "stop" ]; then
+  adb shell 'pkill -f frida-server' || true
+  echo "[+] frida-server stopped"
+  exit 0
+fi
+
+ABI="$(adb shell getprop ro.product.cpu.abi | tr -d '\r')"
+case "$ABI" in
+  arm64-v8a) A=arm64 ;;
+  armeabi-v7a|armeabi) A=arm ;;
+  x86_64) A=x86_64 ;;
+  x86) A=x86 ;;
+  *) echo "[-] Unknown ABI: $ABI"; exit 1 ;;
+esac
+
+SRC="/opt/frida/frida-server-$A"
+[ -x "$SRC" ] || { echo "[-] Missing $SRC"; exit 1; }
+
+echo "[*] Pushing frida-server ($A) ..."
+adb push "$SRC" /data/local/tmp/frida-server >/dev/null
+adb shell chmod 755 /data/local/tmp/frida-server
+adb shell 'pkill -f frida-server' >/dev/null 2>&1 || true
+adb shell 'nohup /data/local/tmp/frida-server >/dev/null 2>&1 &' >/dev/null 2>&1 || true
+sleep 2
+
+if adb shell 'ps -A | grep -q frida-server'; then
+  echo "[+] frida-server is running ($A)"
+else
+  echo "[-] frida-server did not start"; exit 1
+fi
+echo "[*] Sample of running processes visible to Frida:"
+frida-ps -U | head -8

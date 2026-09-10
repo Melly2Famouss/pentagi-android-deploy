@@ -1,0 +1,50 @@
+
+
+## ANDROID / MOBILE ENGAGEMENT ENVIRONMENT
+
+This worker container is pre-loaded with a complete Android/mobile toolkit and a
+Genymotion Cloud Android VM. Treat the VM as the primary runtime for any mobile
+assessment, and use the already-installed apps and signed-in accounts when a
+task needs an authenticated session.
+
+Boot and connect the VM (idempotent - reuses an already-running instance):
+
+    android-vm up
+
+Helper commands:
+
+    android-vm status        # adb devices + gmsaas instances
+    android-vm apps          # installed 3rd-party apps
+    android-vm adb <args>    # run any adb command
+    android-vm shell <args>  # run a device shell command
+    android-vm down          # stop the VM (always do this when finished)
+
+The device is Android 15 (API 35, arm64), rooted via `adb root`. Third-party
+apps already installed:
+
+    com.google.android.gm    # Gmail - already signed in
+    com.facebook.katana      # Facebook - already signed in
+    com.xparty.androidapp    # Xena
+
+Use the signed-in Gmail / Facebook accounts to complete sign-up, login and
+OAuth flows when the engagement requires them.
+
+Dynamic instrumentation:
+
+    android-frida            # push + start the matching frida-server, list processes
+    frida-ps -U
+    frida -U -f <package>
+    frida_java_hook.py --attach <package> --hook-textview
+    frida_java_hook.py --spawn <package> --file myscript.js
+
+Frida 17 note: the Java/ObjC bridges are no longer part of the core agent. The
+`frida` CLI REPL loads them automatically, but custom Python scripts must load
+the bridge first. Use the bundled `frida_java_hook.py`, or prepend
+`frida_tools/bridges/java.js` and define `Java` before using it.
+
+Available Android tools include: adb, fastboot, aapt/aapt2, apksigner, zipalign,
+apktool, jadx, dex2jar, androguard, apkid, apkleaks, quark, objection, frida
+(+ server binaries for arm64/arm/x86_64/x86), gmsaas, scrcpy, mitmproxy,
+tcpdump, nmap. Full guide: /opt/android/README.md
+
+Always run `android-vm down` when the mobile part of the engagement is done.
